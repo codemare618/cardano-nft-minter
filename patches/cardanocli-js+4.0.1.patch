@@ -1,0 +1,63 @@
+diff --git a/node_modules/cardanocli-js/index.js b/node_modules/cardanocli-js/index.js
+index 77a34d2..4ac42d6 100644
+--- a/node_modules/cardanocli-js/index.js
++++ b/node_modules/cardanocli-js/index.js
+@@ -980,7 +980,8 @@ class CardanocliJs {
+     const witnessOverride = options.witnessOverride
+       ? `--witness-override ${options.witnessOverride}`
+       : "";
+-    execSync(`${this.cliPath} transaction build \
++    try {
++      const result = execSync(`${this.cliPath} transaction build \
+                 ${txInString} \
+                 ${txOutString} \
+                 ${txInCollateralString} \
+@@ -992,19 +993,31 @@ class CardanocliJs {
+                 ${scriptInvalid} \
+                 ${witnessOverride} \
+                 --invalid-hereafter ${
+-                  options.invalidAfter
+-                    ? options.invalidAfter
+-                    : this.queryTip().slot + 10000
+-                } \
++          options.invalidAfter
++              ? options.invalidAfter
++              : this.queryTip().slot + 10000
++      } \
+                 --invalid-before ${
+-                  options.invalidBefore ? options.invalidBefore : 0
+-                } \
++          options.invalidBefore ? options.invalidBefore : 0
++      } \
+                 --out-file ${this.dir}/tmp/tx_${UID}.raw \
+                 ${changeAddressString} \
+                 --${this.network} \
+                 ${this.era}`);
+-
+-    return `${this.dir}/tmp/tx_${UID}.raw`;
++      console.log('trbuild result - ', result.toString());
++      return `${this.dir}/tmp/tx_${UID}.raw`;
++    }catch(exception) {
++      const err = exception.stderr.toString();
++      const message2Find = 'Minimum required UTxO: Lovelace ';
++      const index = err.indexOf(message2Find);
++      if (index >= 0) {
++        const lovelaceRequired = err.substr(index + message2Find.length);
++        return {
++          lovelace: parseInt(lovelaceRequired)
++        }
++      }
++      throw exception;
++    }
+   }
+ 
+   /**
+@@ -1033,7 +1046,7 @@ class CardanocliJs {
+                 --tx-body-file ${options.txBody} \
+                 --tx-in-count ${options.txIn.length} \
+                 --tx-out-count ${options.txOut.length} \
+-                --mainnet \
++                --${this.network} \
+                 --witness-count ${options.witnessCount} \
+                 --protocol-params-file ${this.protocolParametersPath}`)
+         .toString()
